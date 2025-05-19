@@ -18,7 +18,7 @@ exports.CreateUser = async(req, res )=>{
         if (existingUser) {
             return res.status(409).json({ error: 'Email already registered' });
         }
-        
+
         const hashedpass = await bcrypt.hash(password , 10);
 
         const token = crypto.randomBytes(32).toString('hex');
@@ -29,7 +29,7 @@ exports.CreateUser = async(req, res )=>{
 
         sendMail(user.Email , 'please verify your email' , message)
 
-        res.status(200).json('email sent to your account successfully')
+        res.status(200).json({message:'email sent to your account successfully', user})
 
         
 
@@ -39,21 +39,70 @@ exports.CreateUser = async(req, res )=>{
     }
 }
 
-exports.VerifyEmail = async (req,res)=>{
 
-    const {id , token} = req.body
+
+exports.Login = async(req,res)=>{
+
+    const{Email , password} = req.body 
 
     try {
-        const user = await userModel.findByPk(id)
-        if(!user) return res.status(401).json('user not found')
+        const user = await userModel.findOne({where: {Email} });
+        if(!user){
+            res.json('user not found')
+        }
 
-            const token = await userModel.findOne({token: user.token})
-                if(!token) return res.json('invalid token')
+          if (!user.isVerified) {
 
-                    await userModel.findOne({isVerified:true});
-                    await userModel.findOne({token:null}) ;
+            return res.status(403).json({ message: 'Please verify your email before logging in.' });
+        }
+        else{
 
-                    res.json('user verified successfully')
+            const hashpass = await bcrypt.compare(password, user.password )
+
+            if(!hashpass){
+                res.json('invalid password')
+            }
+            else{
+                const secreteKey = process.env.SecreteKey
+
+                const token = jwt.sign({fullName: user.fullName , Email:user.Email , isVerified:user.isVerified} , secreteKey , {expiresIn:'3h'} )
+                res.status(201).json({message:'login successfully', 
+                    user:{fullName: user.fullName , Email:user.Email , isVerified:user.isVerified}, 
+                    
+                  token})
+            }
+        }
+
+
+    } catch (error) {
+        
+    }
+
+
+}
+
+
+exports.VerifyEmail = async (req,res)=>{
+
+    const {id , token} =  req.params;
+
+    try {
+       
+        const user = await userModel.findByPk(id) ;
+        if(!user){
+            res.json('user not found')
+        }
+
+        if(user.token !== token){
+            res.json('token does not exist')
+        }
+
+        user.isVerified = true ,
+        user.token = null
+
+        await user.save()
+
+        res.json('token verified successfully')
         
         
 
