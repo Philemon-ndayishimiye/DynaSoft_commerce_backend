@@ -4,7 +4,8 @@ const userModel = require('../model/userModel');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt'); 
-const sendMail = require('../utils/SendEmail')
+const sendMail = require('../utils/SendEmail');
+const SendEmail = require('../utils/SendEmail');
 
 
 exports.CreateUser = async(req, res )=>{
@@ -112,4 +113,72 @@ exports.VerifyEmail = async (req,res)=>{
         console.log('error occured', error)
     }
 
+}
+
+
+
+exports.forgotPassword =async (req,res)=>{
+
+    const{Email} = req.body
+
+    try {
+
+        const user = await userModel.findOne({where:{Email}});
+        if(!user){
+            res.json('user not found');
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+
+         user.token = token ;
+         await user.save();
+
+         const message = `${process.env.BASE_URL}/reset/${user.id}/${token}`
+
+         SendEmail(user.Email , 'reset your password' , message)
+
+        res.json({message:'email send to your account to reset password',  token  })
+        
+    } catch (error) {
+        console.log('error occured', error)
+        
+    }
+    
+}
+
+
+
+exports.ResetPassword = async(req,res)=>{
+
+    const{id , token} = req.params
+
+    const {newPass} = req.body
+
+    try {
+        
+        const user = await userModel.findByPk(id);
+        if(!user){
+            res.json('user not found')
+        }
+
+        if(user.token!==token){
+            res.json('invalid token')
+        } 
+
+
+        else{
+            const hashpass = await bcrypt.hash(newPass , 10);
+            user.password = hashpass ;
+            user.token = null ;
+
+            await user.save()
+
+            res.json('password reset successfully')
+
+        }
+
+    } catch (error) {
+        
+        console.log('error occured', error)
+    }
 }
