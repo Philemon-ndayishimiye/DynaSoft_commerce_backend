@@ -148,37 +148,37 @@ exports.forgotPassword =async (req,res)=>{
 
 
 
-exports.ResetPassword = async(req,res)=>{
 
-    const{id , token} = req.params
-
-    const {newPass} = req.body
+exports.ResetPassword = async (req, res) => {
+    const { id, token } = req.params;
+    const { newPass } = req.body;
 
     try {
-        
+        // Check if newPass is provided
+        if (!newPass) {
+            return res.status(400).json({ message: 'New password is required' });
+        }
+
         const user = await userModel.findByPk(id);
-        if(!user){
-            res.json('user not found')
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
 
-        if(user.token!==token){
-            res.json('invalid token')
-        } 
-
-
-        else{
-            const hashpass = await bcrypt.hash(newPass , 10);
-            user.password = hashpass ;
-            user.token = null ;
-
-            await user.save()
-
-            res.json('password reset successfully')
-
+        if (user.token !== token) {
+            return res.status(400).json({ message: 'Invalid token' });
         }
+
+        const hashpass = await bcrypt.hash(newPass, 10);
+        user.password = hashpass;
+        user.token = null;
+
+        await user.save();
+
+        res.json({ message: 'Password reset successfully' });
 
     } catch (error) {
-        
-        console.log('error occured', error)
+        console.log('error occurred:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-}
+};
