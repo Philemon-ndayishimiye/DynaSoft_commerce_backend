@@ -14,8 +14,7 @@ const SendEmail = async( email, subject , text)=>{
                 pass:process.env.EMAIL_PASS
 
             }
-        })
-
+        }) 
         await Transporter.sendMail({
             from: process.env.EMAIL_USER,
             to:email,

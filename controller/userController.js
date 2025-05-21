@@ -1,5 +1,5 @@
 
-const userModel = require('../model/userModel');
+const{UserModel} = require('../models')
 
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -10,12 +10,12 @@ const SendEmail = require('../utils/SendEmail');
 
 exports.CreateUser = async(req, res )=>{
 
-    const{fullName, Email , password}= req.body
+    const{fullName, Email , password , role }= req.body
 
     try {
           // Check if user already exists
 
-        const existingUser = await userModel.findOne({ where: { Email } });
+        const existingUser = await UserModel.findOne({ where: { Email } });
         if (existingUser) {
             return res.status(409).json({ error: 'Email already registered' });
         }
@@ -24,7 +24,9 @@ exports.CreateUser = async(req, res )=>{
 
         const token = crypto.randomBytes(32).toString('hex');
 
-        const user = await userModel.create({fullName , Email , password:hashedpass , token});
+        const user = await UserModel.create(
+            {fullName , Email , password:hashedpass ,  role:role || 'user' , token}
+        );
 
         const message = `${process.env.BASE_URL}/verify/${user.id}/${user.token}`
 
@@ -47,7 +49,7 @@ exports.Login = async(req,res)=>{
     const{Email , password} = req.body 
 
     try {
-        const user = await userModel.findOne({where: {Email} });
+        const user = await UserModel.findOne({where: {Email} });
         if(!user){
             res.json('user not found')
         }
@@ -89,7 +91,7 @@ exports.VerifyEmail = async (req,res)=>{
 
     try {
        
-        const user = await userModel.findByPk(id) ;
+        const user = await UserModel.findByPk(id) ;
         if(!user){
             res.json('user not found')
         }
@@ -123,7 +125,7 @@ exports.forgotPassword =async (req,res)=>{
 
     try {
 
-        const user = await userModel.findOne({where:{Email}});
+        const user = await UserModel.findOne({where:{Email}});
         if(!user){
             res.json('user not found');
         }
@@ -159,7 +161,7 @@ exports.ResetPassword = async (req, res) => {
             return res.status(400).json({ message: 'New password is required' });
         }
 
-        const user = await userModel.findByPk(id);
+        const user = await UserModel.findByPk(id);
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
